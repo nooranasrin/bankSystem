@@ -1,6 +1,4 @@
-const banks = {
-  federal: [{ branchName: 'bangalore', ifsc: 'fedbang123' }],
-};
+const availableBanks = require('../src/banksInfo.json');
 
 const prompt = {
   createAccount: [
@@ -12,7 +10,7 @@ const prompt = {
     {
       type: 'input',
       name: 'dob',
-      default: 'dd-mm-yyyy',
+      default: 'YYYY-MM-DD',
       message: 'Enter your date of birth',
     },
     {
@@ -27,7 +25,7 @@ const prompt = {
     },
     {
       type: 'list',
-      choices: Object.keys(banks),
+      choices: Object.keys(availableBanks),
       name: 'bank',
       message: 'Select your bank ',
     },
@@ -35,7 +33,7 @@ const prompt = {
 };
 
 const getBranches = function (bankName) {
-  const branches = banks[bankName].map((branch) => branch.branchName);
+  const branches = availableBanks[bankName].map((branch) => branch.branchName);
   return {
     type: 'list',
     choices: branches,
@@ -43,7 +41,5 @@ const getBranches = function (bankName) {
     message: 'Select your branch ',
   };
 };
-
-// -> name, dob, address, phone, aadhar_no, select_bank, select_branch
 
 module.exports = { prompt, getBranches };

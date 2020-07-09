@@ -6,8 +6,15 @@ const addCreateCmd = function (vorpal, bank) {
   vorpal.command('create account').action(async function (args, callback) {
     const answers = await inquirer.prompt(prompt.createAccount);
     const branch = await inquirer.prompt(getBranches(answers.bank));
-    console.log(Object.assign(branch, answers));
-    // bank.createAccount(Object.assign({branch},answers))
+    const status = await bank.createAccount(Object.assign(branch, answers));
+    if (status.code === 0) {
+      const { name, accountNumber, pin } = status.message;
+      let msg = `${name} your account successfully created!!\n`;
+      msg += `Your ac/no is ${accountNumber} and pin is ${pin}`;
+      this.log(vorpal.chalk.green(msg));
+      return callback();
+    }
+    this.log(vorpal.chalk.red(status.message));
     callback();
   });
 };

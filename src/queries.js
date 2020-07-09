@@ -12,9 +12,25 @@ const queries = {
                 time date not null)`,
 };
 
-const getNewAccountQuery = function (accountHolderInfo) {
-  const { name, dob, phone, branch, aadhar } = accountHolderInfo;
-  return `insert into account_holders values(?,${name},${dob}, ${phone},${aadhar})`;
+const getNewAccountQuery = function (pin, accountHolderInfo) {
+  const { name, dob, phone, aadharNumber } = accountHolderInfo;
+  return `insert into account_holders values(${pin},"${name}",'${dob}', ${phone},${aadharNumber})`;
 };
 
-module.exports = { queries, getNewAccountQuery };
+const getAccountInfoQuery = function (pin, accountNumber, ifsc) {
+  return `insert into account_info values(${pin},${accountNumber},"${ifsc}")`;
+};
+
+const retrievalQuery = function (table, key, value) {
+  if (key && value) {
+    return `select * from ${table} where ${key}="${value}"`;
+  }
+  return `select * from  ${table}`;
+};
+
+module.exports = {
+  queries,
+  getNewAccountQuery,
+  getAccountInfoQuery,
+  retrievalQuery,
+};
