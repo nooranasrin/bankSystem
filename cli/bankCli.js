@@ -1,5 +1,5 @@
 const inquirer = require('inquirer');
-const { prompt, getBranches } = require('./prompt');
+const { prompt, getBranches, getIfsc } = require('./prompt');
 const Vorpal = require('vorpal');
 
 const addCreateCmd = function (vorpal, bank) {
@@ -19,12 +19,25 @@ const addCreateCmd = function (vorpal, bank) {
   });
 };
 
+const addDepositCmd = function (vorpal, bank) {
+  vorpal.command('deposit').action(async function (args, callback) {
+    const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
+    const questions = [getIfsc(bank, accountNumber), prompt.amount];
+    const { ifsc, amount } = await inquirer.prompt(questions);
+    const status = await bank.deposit({ accountNumber, ifsc, amount });
+    const color = status.code === 0 ? vorpal.chalk.green : vorpal.chalk.red;
+    this.log(color(status.message));
+    callback();
+  });
+};
+
 const addDelimiter = (vorpal) => vorpal.delimiter('bank $ ').show();
 
 const addCmd = function (bank) {
   const vorpal = new Vorpal();
   addDelimiter(vorpal);
   addCreateCmd(vorpal, bank);
+  addDepositCmd(vorpal, bank);
 };
 
 module.exports = { addCmd };

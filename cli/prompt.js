@@ -30,6 +30,14 @@ const prompt = {
       message: 'Select your bank ',
     },
   ],
+  accountNumber: [
+    {
+      type: 'intput',
+      name: 'accountNumber',
+      message: 'Enter account number',
+    },
+  ],
+  amount: { type: 'intput', name: 'amount', message: 'Enter the amount' },
 };
 
 const getBranches = function (bankName) {
@@ -42,4 +50,17 @@ const getBranches = function (bankName) {
   };
 };
 
-module.exports = { prompt, getBranches };
+const getIfsc = function (bank, accountNumber) {
+  return {
+    type: 'input',
+    name: 'ifsc',
+    message: 'Enter the ifsc',
+    validate: async (ifsc) => {
+      const status = await bank.isValidAccount(accountNumber, ifsc);
+      if (!status) return 'invalid account number or ifsc';
+      return true;
+    },
+  };
+};
+
+module.exports = { prompt, getBranches, getIfsc };

@@ -19,7 +19,12 @@ class Database {
   }
 
   update(sql) {
-    this.db.run(sql, (err) => err && console.log(err));
+    return new Promise((resolve, reject) => {
+      this.db.run(sql, (err) => {
+        err && reject(err);
+        resolve();
+      });
+    });
   }
 
   select(sql) {

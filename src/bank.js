@@ -3,6 +3,8 @@ const {
   getNewAccountQuery,
   retrievalQuery,
   getAccountInfoQuery,
+  getDepositQuery,
+  getValidateAccount,
 } = require('./queries');
 const availableBanks = require('./banksInfo.json');
 
@@ -48,7 +50,7 @@ class Bank {
   }
 
   createAccountNumber(bank) {
-    const accountNumber = Math.floor(Math.random(15) * 10000000000000000);
+    const accountNumber = Math.floor(Math.random(15) * 1000000000000000);
     const allBranches = availableBanks[bank].map((branch) => branch.ifsc);
     allBranches.forEach(async (ifsc) => {
       const sql = retrievalQuery(`account_info`, 'ifsc', ifsc);
@@ -59,6 +61,19 @@ class Bank {
       });
     });
     return accountNumber;
+  }
+
+  async deposit(depositInfo) {
+    const { amount } = depositInfo;
+    const sql = getDepositQuery(depositInfo);
+    await this.db.update(sql);
+    return { message: `successfully deposited ${amount}`, code: 0 };
+  }
+
+  async isValidAccount(accountNumber, ifsc) {
+    const sql = getValidateAccount(accountNumber, ifsc);
+    const account = await this.db.select(sql);
+    return account.length;
   }
 
   async show(table) {
