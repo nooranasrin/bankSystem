@@ -33,8 +33,12 @@ const getDepositQuery = function (depositInfo) {
   return `update account_info set balance = balance+${amount} where ifsc="${ifsc}" and account_number=${accountNumber}`;
 };
 
-const getValidateAccount = function (accountNumber, ifsc) {
+const getValidateAccountQuery = function (accountNumber, ifsc) {
   return `select * from account_info where account_number=${accountNumber} and ifsc="${ifsc}"`;
+};
+
+const getValidateUserQuery = function (accountNumber, pin) {
+  return `select * from account_info where account_number=${accountNumber} and id="${pin}"`;
 };
 
 module.exports = {
@@ -43,5 +47,6 @@ module.exports = {
   getAccountInfoQuery,
   retrievalQuery,
   getDepositQuery,
-  getValidateAccount,
+  getValidateAccountQuery,
+  getValidateUserQuery,
 };

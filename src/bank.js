@@ -4,7 +4,8 @@ const {
   retrievalQuery,
   getAccountInfoQuery,
   getDepositQuery,
-  getValidateAccount,
+  getValidateAccountQuery,
+  getValidateUserQuery,
 } = require('./queries');
 const availableBanks = require('./banksInfo.json');
 
@@ -71,9 +72,21 @@ class Bank {
   }
 
   async isValidAccount(accountNumber, ifsc) {
-    const sql = getValidateAccount(accountNumber, ifsc);
+    const sql = getValidateAccountQuery(accountNumber, ifsc);
     const account = await this.db.select(sql);
     return account.length;
+  }
+
+  async isValidUser(accountNumber, pin) {
+    const sql = getValidateUserQuery(accountNumber, pin);
+    const account = await this.db.select(sql);
+    return account.length;
+  }
+
+  async balanceEnquiry(pin) {
+    const sql = retrievalQuery('account_info', 'id', pin);
+    const [account] = await this.db.select(sql);
+    return account;
   }
 
   async show(table) {

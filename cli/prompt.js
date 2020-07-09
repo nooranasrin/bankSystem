@@ -63,4 +63,17 @@ const getIfsc = function (bank, accountNumber) {
   };
 };
 
-module.exports = { prompt, getBranches, getIfsc };
+const getPin = function (bank, accountNumber) {
+  return {
+    type: 'input',
+    name: 'pin',
+    message: 'Enter your pin',
+    validate: async (pin) => {
+      const status = await bank.isValidUser(accountNumber, pin);
+      if (!status) return 'invalid account number or pin';
+      return true;
+    },
+  };
+};
+
+module.exports = { prompt, getBranches, getIfsc, getPin };
