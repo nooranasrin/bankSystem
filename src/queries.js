@@ -9,7 +9,7 @@ const queries = {
 
   activityLog: `create table if not exists activity_log(id numeric(4) not null,
                 action varchar(10) not null, transaction_amount numeric(5) not null, balance numeric(10) not null,
-                time date not null)`,
+                date date not null)`,
 };
 
 const getNewAccountQuery = function (pin, accountHolderInfo) {

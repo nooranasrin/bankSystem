@@ -93,6 +93,11 @@ class Bank {
     return { message: `Not sufficient balance in your account`, code: 1 };
   }
 
+  async getBankStatement(pin) {
+    const sql = retrievalQuery('activity_log', { id: pin });
+    return await this.db.select(sql);
+  }
+
   async validateBy(fields) {
     const sql = retrievalQuery('account_info', fields);
     const account = await this.db.select(sql);

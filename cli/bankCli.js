@@ -1,6 +1,7 @@
 const inquirer = require('inquirer');
-const { prompt, getBranches, getIfsc, getPin } = require('./prompt');
+const Table = require('cli-table');
 const Vorpal = require('vorpal');
+const { prompt, getBranches, getIfsc, getPin } = require('./prompt');
 
 const addCreateCmd = function (vorpal, bank) {
   vorpal.command('create account').action(async function (args, callback) {
@@ -52,6 +53,22 @@ const addWithdrawalCmd = function (vorpal, bank) {
   });
 };
 
+const addBankStatementCmd = function (vorpal, bank) {
+  vorpal.command('bank statement').action(async function (args, callback) {
+    const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
+    const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
+    const bankStatement = await bank.getBankStatement(pin);
+    const head = ['Date', 'Description', 'Transaction amount', 'Balance'];
+    const table = new Table({ head });
+    const latestTransactions = bankStatement.reverse().slice(0, 10);
+    latestTransactions.forEach((transaction) => {
+      const { transaction_amount, balance, action, date } = transaction;
+      table.push([date, action, transaction_amount, balance]);
+    });
+    console.log(table.toString());
+  });
+};
+
 const addDelimiter = (vorpal) => vorpal.delimiter('bank $ ').show();
 
 const addCmd = function (bank) {
@@ -61,6 +78,7 @@ const addCmd = function (bank) {
   addDepositCmd(vorpal, bank);
   addBalanceEnquiryCmd(vorpal, bank);
   addWithdrawalCmd(vorpal, bank);
+  addBankStatementCmd(vorpal, bank);
 };
 
 module.exports = { addCmd };
