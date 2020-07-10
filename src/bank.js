@@ -93,6 +93,26 @@ class Bank {
     return { message: `Not sufficient balance in your account`, code: 1 };
   }
 
+  async transfer(remitter, beneficiary, amount) {
+    const sql = retrievalQuery('account_info', { id: remitter.pin });
+    const [account] = await this.db.select(sql);
+    if (account.balance >= amount) {
+      await this.db.update(getWithdrawalQuery({ amount, pin: remitter.pin }));
+      const account_number = remitter.accountNumber;
+      const id = remitter.pin;
+      let fields = { account_number, id };
+      await this.addTransactionIntoLog(fields, 'Transfer', amount * -1);
+
+      fields = Object.assign({ amount }, beneficiary);
+      await this.db.update(getDepositQuery(fields));
+      const { accountNumber, ifsc } = beneficiary;
+      fields = { account_number: accountNumber, ifsc };
+      await this.addTransactionIntoLog(fields, 'Transfer', amount);
+      return { message: `Successfully transferred ${amount}`, code: 0 };
+    }
+    return { message: `Not sufficient balance in your account`, code: 1 };
+  }
+
   async getBankStatement(pin) {
     const sql = retrievalQuery('activity_log', { id: pin });
     return await this.db.select(sql);

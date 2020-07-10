@@ -69,6 +69,24 @@ const addBankStatementCmd = function (vorpal, bank) {
   });
 };
 
+const addTransferCmd = function (vorpal, bank) {
+  vorpal.command('transfer').action(async function (args, callback) {
+    this.log(vorpal.chalk.cyan('Remitter: '));
+    const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
+    const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
+    this.log(vorpal.chalk.cyan('Beneficiary: '));
+    let beneficiary = await inquirer.prompt(prompt.accountNumber);
+    const questions = [getIfsc(bank, accountNumber), prompt.amount];
+    const { ifsc, amount } = await inquirer.prompt(questions);
+    beneficiary = { ifsc, accountNumber: beneficiary.accountNumber };
+    const remitter = { accountNumber, pin };
+    const status = await bank.transfer(remitter, beneficiary, amount);
+    const color = status.code ? vorpal.chalk.red : vorpal.chalk.green;
+    this.log(color(status.message));
+    callback();
+  });
+};
+
 const addDelimiter = (vorpal) => vorpal.delimiter('bank $ ').show();
 
 const addCmd = function (bank) {
@@ -79,6 +97,7 @@ const addCmd = function (bank) {
   addBalanceEnquiryCmd(vorpal, bank);
   addWithdrawalCmd(vorpal, bank);
   addBankStatementCmd(vorpal, bank);
+  addTransferCmd(vorpal, bank);
 };
 
 module.exports = { addCmd };
