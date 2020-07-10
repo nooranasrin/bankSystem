@@ -21,11 +21,17 @@ const getAccountInfoQuery = function (pin, accountNumber, ifsc) {
   return `insert into account_info values(${pin},${accountNumber},"${ifsc}",0)`;
 };
 
-const retrievalQuery = function (table, key, value) {
-  if (key && value) {
-    return `select * from ${table} where ${key}="${value}"`;
+const retrievalQuery = function (table, keyValues) {
+  let sql = `select * from ${table} `;
+  if (keyValues) {
+    sql += 'where ';
+    const fields = Object.keys(keyValues);
+    fields.forEach((key, index) => {
+      sql += `${key} = "${keyValues[key]}"`;
+      sql += index === fields.length - 1 ? '' : ` and `;
+    });
   }
-  return `select * from  ${table}`;
+  return sql;
 };
 
 const getDepositQuery = function (depositInfo) {
@@ -33,12 +39,8 @@ const getDepositQuery = function (depositInfo) {
   return `update account_info set balance = balance+${amount} where ifsc="${ifsc}" and account_number=${accountNumber}`;
 };
 
-const getValidateAccountQuery = function (accountNumber, ifsc) {
-  return `select * from account_info where account_number=${accountNumber} and ifsc="${ifsc}"`;
-};
-
-const getValidateUserQuery = function (accountNumber, pin) {
-  return `select * from account_info where account_number=${accountNumber} and id="${pin}"`;
+const getActivityLogInsertQuery = function (pin, action, amount, balance) {
+  return `insert into activity_log values(${pin},"${action}",${amount},${balance},DATE('now'))`;
 };
 
 module.exports = {
@@ -47,6 +49,5 @@ module.exports = {
   getAccountInfoQuery,
   retrievalQuery,
   getDepositQuery,
-  getValidateAccountQuery,
-  getValidateUserQuery,
+  getActivityLogInsertQuery,
 };

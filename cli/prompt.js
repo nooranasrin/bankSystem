@@ -56,7 +56,8 @@ const getIfsc = function (bank, accountNumber) {
     name: 'ifsc',
     message: 'Enter the ifsc',
     validate: async (ifsc) => {
-      const status = await bank.isValidAccount(accountNumber, ifsc);
+      const fields = { ifsc: ifsc, account_number: accountNumber };
+      const status = await bank.validateBy(fields);
       if (!status) return 'invalid account number or ifsc';
       return true;
     },
@@ -69,7 +70,8 @@ const getPin = function (bank, accountNumber) {
     name: 'pin',
     message: 'Enter your pin',
     validate: async (pin) => {
-      const status = await bank.isValidUser(accountNumber, pin);
+      const fields = { id: pin, account_number: accountNumber };
+      const status = await bank.validateBy(fields);
       if (!status) return 'invalid account number or pin';
       return true;
     },

@@ -4,8 +4,7 @@ const {
   retrievalQuery,
   getAccountInfoQuery,
   getDepositQuery,
-  getValidateAccountQuery,
-  getValidateUserQuery,
+  getActivityLogInsertQuery,
 } = require('./queries');
 const availableBanks = require('./banksInfo.json');
 
@@ -35,6 +34,20 @@ class Bank {
     return pin;
   }
 
+  createAccountNumber(bank) {
+    const accountNumber = Math.floor(Math.random(15) * 1000000000000000);
+    const allBranches = availableBanks[bank].map((branch) => branch.ifsc);
+    allBranches.forEach(async (ifsc) => {
+      const sql = retrievalQuery(`account_info`, { ifsc: ifsc });
+      const existingAccounts = await this.db.select(sql);
+      existingAccounts.forEach((accountInfo) => {
+        if (accountInfo.accountNumber === accountNumber)
+          return this.createAccountNumber(bank);
+      });
+    });
+    return accountNumber;
+  }
+
   async createAccount(accountHolderInfo) {
     try {
       const pin = await this.createPin();
@@ -50,41 +63,31 @@ class Bank {
     }
   }
 
-  createAccountNumber(bank) {
-    const accountNumber = Math.floor(Math.random(15) * 1000000000000000);
-    const allBranches = availableBanks[bank].map((branch) => branch.ifsc);
-    allBranches.forEach(async (ifsc) => {
-      const sql = retrievalQuery(`account_info`, 'ifsc', ifsc);
-      const existingAccounts = await this.db.select(sql);
-      existingAccounts.forEach((accountInfo) => {
-        if (accountInfo.accountNumber === accountNumber)
-          return this.createAccountNumber(bank);
-      });
-    });
-    return accountNumber;
+  async addTransactionIntoLog(fields, action, amount) {
+    let sql = retrievalQuery('account_info', fields);
+    const [account] = await this.db.select(sql);
+    const { id, balance } = account;
+    sql = getActivityLogInsertQuery(id, action, amount, balance);
+    await this.db.insert(sql);
   }
 
   async deposit(depositInfo) {
-    const { amount } = depositInfo;
-    const sql = getDepositQuery(depositInfo);
-    await this.db.update(sql);
+    const { amount, ifsc, accountNumber } = depositInfo;
+    await this.db.update(getDepositQuery(depositInfo));
+    const fields = { account_number: accountNumber, ifsc };
+    await this.addTransactionIntoLog(fields, 'deposit', amount);
+    await this.show('activity_log');
     return { message: `successfully deposited ${amount}`, code: 0 };
   }
 
-  async isValidAccount(accountNumber, ifsc) {
-    const sql = getValidateAccountQuery(accountNumber, ifsc);
-    const account = await this.db.select(sql);
-    return account.length;
-  }
-
-  async isValidUser(accountNumber, pin) {
-    const sql = getValidateUserQuery(accountNumber, pin);
+  async validateBy(fields) {
+    const sql = retrievalQuery('account_info', fields);
     const account = await this.db.select(sql);
     return account.length;
   }
 
   async balanceEnquiry(pin) {
-    const sql = retrievalQuery('account_info', 'id', pin);
+    const sql = retrievalQuery('account_info', { id: pin });
     const [account] = await this.db.select(sql);
     return account;
   }
