@@ -43,6 +43,11 @@ const getActivityLogInsertQuery = function (pin, action, amount, balance) {
   return `insert into activity_log values(${pin},"${action}",${amount},${balance},DATE('now'))`;
 };
 
+const getWithdrawalQuery = function (withdrawalInfo) {
+  const { amount, pin } = withdrawalInfo;
+  return `update account_info set balance = balance-${amount} where id=${pin}`;
+};
+
 module.exports = {
   queries,
   getNewAccountQuery,
@@ -50,4 +55,5 @@ module.exports = {
   retrievalQuery,
   getDepositQuery,
   getActivityLogInsertQuery,
+  getWithdrawalQuery,
 };

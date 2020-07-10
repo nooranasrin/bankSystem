@@ -5,6 +5,7 @@ const {
   getAccountInfoQuery,
   getDepositQuery,
   getActivityLogInsertQuery,
+  getWithdrawalQuery,
 } = require('./queries');
 const availableBanks = require('./banksInfo.json');
 
@@ -76,8 +77,20 @@ class Bank {
     await this.db.update(getDepositQuery(depositInfo));
     const fields = { account_number: accountNumber, ifsc };
     await this.addTransactionIntoLog(fields, 'deposit', amount);
-    await this.show('activity_log');
     return { message: `successfully deposited ${amount}`, code: 0 };
+  }
+
+  async withdraw(withdrawInfo) {
+    const { amount, pin, accountNumber } = withdrawInfo;
+    const sql = retrievalQuery('account_info', { id: pin });
+    const [account] = await this.db.select(sql);
+    if (account.balance >= amount) {
+      await this.db.update(getWithdrawalQuery(withdrawInfo));
+      const fields = { account_number: accountNumber, id: pin };
+      await this.addTransactionIntoLog(fields, 'withdrawal', amount);
+      return { message: `Withdrawal successful ${amount}`, code: 0 };
+    }
+    return { message: `Not sufficient balance in your account`, code: 1 };
   }
 
   async validateBy(fields) {
