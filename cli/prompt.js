@@ -66,7 +66,7 @@ const getIfsc = function (bank, accountNumber) {
 
 const getPin = function (bank, accountNumber) {
   return {
-    type: 'input',
+    type: 'password',
     name: 'pin',
     message: 'Enter your pin',
     validate: async (pin) => {
