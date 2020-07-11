@@ -49,7 +49,6 @@ class User {
       const withdrawalInfo = Object.assign({ amount }, user.accountInfo);
       const status = await user.bank.withdraw(withdrawalInfo);
       const color = user.getColor(status.code);
-      console.log(color);
       this.log(color(status.message));
       callback();
     });
@@ -61,12 +60,13 @@ class User {
       .command('bank statement')
       .action(async function (args, callback) {
         const bankStatement = await user.bank.getBankStatement(user.pin);
-        const head = ['Date', 'Description', 'Transaction amount', 'Balance'];
-        const table = new Table({ head });
+        let head = ['Date', 'Description', 'Type', 'Transaction amount'];
+        const table = new Table({ head: head.concat(['Balance']) });
         const latestTransactions = bankStatement.reverse().slice(0, 10);
         latestTransactions.forEach((transaction) => {
-          const { transaction_amount, balance, action, date } = transaction;
-          table.push([date, action, transaction_amount, balance]);
+          const { transaction_amount, date } = transaction;
+          const { description, balance, type } = transaction;
+          table.push([date, description, type, transaction_amount, balance]);
         });
         console.log(table.toString());
         callback();
@@ -83,7 +83,6 @@ class User {
       const beneficiary = { ifsc, accountNumber };
       const remitter = user.accountInfo;
       const status = await user.bank.transfer(remitter, beneficiary, amount);
-      console.log(status);
       const color = user.getColor(status.code);
       this.log(color(status.message));
       callback();

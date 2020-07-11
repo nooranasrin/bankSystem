@@ -6,6 +6,7 @@ const {
   getDepositQuery,
   getActivityLogInsertQuery,
   getWithdrawalQuery,
+  getBasicInfoQuery,
 } = require('./queries');
 const availableBanks = require('./banksInfo.json');
 
@@ -19,10 +20,16 @@ class Bank {
     this.db = db;
   }
 
-  start() {
-    this.db.create(queries.accountHolders);
-    this.db.create(queries.accountInfo);
-    this.db.create(queries.activityLog);
+  async start() {
+    await this.db.create(queries.accountHolders);
+    await this.db.create(queries.accountInfo);
+    await this.db.create(queries.activityLog);
+  }
+
+  async getAccountHolder(fields) {
+    const sql = getBasicInfoQuery(fields);
+    const [accountHolder] = await this.db.select(sql);
+    return accountHolder;
   }
 
   async createPin() {
@@ -64,60 +71,59 @@ class Bank {
     }
   }
 
-  async addTransactionIntoLog(fields, action, amount) {
+  async addTransactionIntoLog(fields, description, type, amount) {
     let sql = retrievalQuery('account_info', fields);
     const [account] = await this.db.select(sql);
     const { id, balance } = account;
-    sql = getActivityLogInsertQuery(id, action, amount, balance);
+    const transactionInfo = { pin: id, description, amount, balance, type };
+    sql = getActivityLogInsertQuery(transactionInfo);
     await this.db.insert(sql);
   }
 
-  async deposit(depositInfo) {
+  async deposit(depositInfo, description = 'Deposit') {
     const { amount, pin, accountNumber } = depositInfo;
     const fields = { account_number: accountNumber, id: pin };
     await this.db.update(getDepositQuery(amount, fields));
-    await this.addTransactionIntoLog(fields, 'deposit', amount);
+    await this.addTransactionIntoLog(fields, description, 'Credit', amount);
     return { message: `successfully deposited ${amount}`, code: 0 };
   }
 
-  async withdraw(withdrawInfo) {
+  async withdraw(withdrawInfo, description = 'Withdrawal') {
     const { amount, pin, accountNumber } = withdrawInfo;
     const sql = retrievalQuery('account_info', { id: pin });
     const [account] = await this.db.select(sql);
     if (account.balance >= amount) {
       await this.db.update(getWithdrawalQuery(withdrawInfo));
       const fields = { account_number: accountNumber, id: pin };
-      await this.addTransactionIntoLog(fields, 'withdrawal', amount);
+      await this.addTransactionIntoLog(fields, description, 'Debit', amount);
       return { message: `Withdrawal successful ${amount}`, code: 0 };
     }
     return { message: `Not sufficient balance in your account`, code: 1 };
   }
 
   async transfer(remitter, beneficiary, amount) {
-    const sql = retrievalQuery('account_info', { id: remitter.pin });
-    const [account] = await this.db.select(sql);
-    if (account.balance >= amount) {
-      await this.db.update(getWithdrawalQuery({ amount, pin: remitter.pin }));
-      const account_number = remitter.accountNumber;
-      const id = remitter.pin;
-      let fields = { account_number, id };
-      await this.addTransactionIntoLog(fields, 'Transfer', amount * -1);
+    const account_number = remitter.accountNumber;
+    const id = remitter.pin;
+    const remitterFields = { account_number, id };
+    const { accountNumber, ifsc } = beneficiary;
+    let beneficiaryFields = { account_number: accountNumber, ifsc };
 
-      fields = {
-        account_number: beneficiary.accountNumber,
-        ifsc: beneficiary.ifsc,
-      };
-      await this.db.update(getDepositQuery(amount, fields));
-      const { accountNumber, ifsc } = beneficiary;
-      fields = { account_number: accountNumber, ifsc };
-      await this.addTransactionIntoLog(fields, 'Transfer', amount);
+    const accountHolder = await this.getAccountHolder(beneficiaryFields);
+    let action = `Transferred to ${accountHolder.name}`;
+    const withdrawalInfo = Object.assign({ amount }, remitter);
+    const withdrawalStatus = await this.withdraw(withdrawalInfo, action);
+    if (!withdrawalStatus.code) {
+      const { name } = await this.getAccountHolder(remitterFields);
+      action = `Transferred from ${name}`;
+      beneficiaryFields = { pin: accountHolder.id, amount, accountNumber };
+      await this.deposit(beneficiaryFields, action);
       return { message: `Successfully transferred ${amount}`, code: 0 };
     }
     return { message: `Not sufficient balance in your account`, code: 1 };
   }
 
   async getBankStatement(pin) {
-    const sql = retrievalQuery('activity_log', { id: pin });
+    let sql = retrievalQuery('activity_log', { id: pin });
     return await this.db.select(sql);
   }
 
