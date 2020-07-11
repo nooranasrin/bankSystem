@@ -24,19 +24,27 @@ const addLoginCmd = function (vorpal, bank) {
   vorpal.command('login').action(async function (args, callback) {
     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
     const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
-    const user = new User(accountNumber, pin, bank);
+    const user = new User(accountNumber, pin, bank, vorpal);
     user.addCmd();
     this.log(vorpal.chalk.green('Successfully logged in'));
     callback();
   });
 };
 
+const addClearCmd = function (vorpal) {
+  vorpal.command('clear').action((args, callback) => {
+    console.clear();
+    callback();
+  });
+};
+
 const addDelimiter = (vorpal) =>
-  vorpal.delimiter(vorpal.chalk.yellow('bank $')).show();
+  vorpal.delimiter(vorpal.chalk.yellow('\nbank-> ')).show();
 
 const addUnauthorizedCmd = function (bank) {
   const vorpal = new Vorpal();
   addDelimiter(vorpal);
+  addClearCmd(vorpal);
   addCreateCmd(vorpal, bank);
   addLoginCmd(vorpal, bank);
 };

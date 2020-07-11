@@ -73,9 +73,9 @@ class Bank {
   }
 
   async deposit(depositInfo) {
-    const { amount, ifsc, accountNumber } = depositInfo;
-    await this.db.update(getDepositQuery(depositInfo));
-    const fields = { account_number: accountNumber, ifsc };
+    const { amount, pin, accountNumber } = depositInfo;
+    const fields = { account_number: accountNumber, id: pin };
+    await this.db.update(getDepositQuery(amount, fields));
     await this.addTransactionIntoLog(fields, 'deposit', amount);
     return { message: `successfully deposited ${amount}`, code: 0 };
   }
@@ -103,8 +103,11 @@ class Bank {
       let fields = { account_number, id };
       await this.addTransactionIntoLog(fields, 'Transfer', amount * -1);
 
-      fields = Object.assign({ amount }, beneficiary);
-      await this.db.update(getDepositQuery(fields));
+      fields = {
+        account_number: beneficiary.accountNumber,
+        ifsc: beneficiary.ifsc,
+      };
+      await this.db.update(getDepositQuery(amount, fields));
       const { accountNumber, ifsc } = beneficiary;
       fields = { account_number: accountNumber, ifsc };
       await this.addTransactionIntoLog(fields, 'Transfer', amount);

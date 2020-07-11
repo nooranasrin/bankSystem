@@ -34,9 +34,14 @@ const retrievalQuery = function (table, keyValues) {
   return sql;
 };
 
-const getDepositQuery = function (depositInfo) {
-  const { amount, accountNumber, ifsc } = depositInfo;
-  return `update account_info set balance = balance+${amount} where ifsc="${ifsc}" and account_number=${accountNumber}`;
+const getDepositQuery = function (amount, keyValues) {
+  let sql = `update account_info set balance = balance+${amount} where `;
+  const fields = Object.keys(keyValues);
+  fields.forEach((key, index) => {
+    sql += `${key} = "${keyValues[key]}"`;
+    sql += index === fields.length - 1 ? '' : ` and `;
+  });
+  return sql;
 };
 
 const getActivityLogInsertQuery = function (pin, action, amount, balance) {

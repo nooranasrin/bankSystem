@@ -4,57 +4,63 @@ const Vorpal = require('vorpal');
 const { prompt, getIfsc, getPin } = require('./prompt');
 
 class User {
-  constructor(accountNumber, pin, bank) {
+  constructor(accountNumber, pin, bank, homeVorpal) {
     this.accountNumber = accountNumber;
     this.pin = pin;
     this.bank = bank;
     this.vorpal = new Vorpal();
+    this.homeVorpal = homeVorpal;
+  }
+
+  get accountInfo() {
+    return { pin: this.pin, accountNumber: this.accountNumber };
+  }
+
+  getColor(code) {
+    return code ? this.vorpal.chalk.red : this.vorpal.chalk.green;
   }
 
   addDepositCmd() {
+    const user = this;
     this.vorpal.command('deposit').action(async function (args, callback) {
-      const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-      const questions = [getIfsc(this.bank, accountNumber), prompt.amount];
-      const { ifsc, amount } = await inquirer.prompt(questions);
-      const status = await this.bank.deposit({ accountNumber, ifsc, amount });
-      this.log(this.vorpal.chalk.green(status.message));
+      const { amount } = await inquirer.prompt(prompt.amount);
+      const depositInfo = Object.assign({ amount }, user.accountInfo);
+      const status = await user.bank.deposit(depositInfo);
+      this.log(user.vorpal.chalk.green(status.message));
       callback();
     });
   }
 
   addBalanceEnquiryCmd() {
+    const user = this;
     this.vorpal.command('balance').action(async function (args, callback) {
-      const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-      const { pin } = await inquirer.prompt(getPin(this.bank, accountNumber));
-      const accountInfo = await this.bank.balanceEnquiry(pin);
+      const accountInfo = await user.bank.balanceEnquiry(user.pin);
       this.log(
-        this.vorpal.chalk.green(`Available balance: ${accountInfo.balance}`)
+        user.vorpal.chalk.green(`Available balance: ${accountInfo.balance}`)
       );
       callback();
     });
   }
 
   addWithdrawalCmd() {
+    const user = this;
     this.vorpal.command('withdraw').action(async function (args, callback) {
-      const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-      const { pin } = await inquirer.prompt(getPin(this.bank, accountNumber));
       const { amount } = await inquirer.prompt(prompt.amount);
-      const status = await this.bank.withdraw({ accountNumber, pin, amount });
-      const color = status.code
-        ? this.vorpal.chalk.red
-        : this.vorpal.chalk.green;
+      const withdrawalInfo = Object.assign({ amount }, user.accountInfo);
+      const status = await user.bank.withdraw(withdrawalInfo);
+      const color = user.getColor(status.code);
+      console.log(color);
       this.log(color(status.message));
       callback();
     });
   }
 
   addBankStatementCmd() {
+    const user = this;
     this.vorpal
       .command('bank statement')
       .action(async function (args, callback) {
-        const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-        const { pin } = await inquirer.prompt(getPin(this.bank, accountNumber));
-        const bankStatement = await this.bank.getBankStatement(pin);
+        const bankStatement = await user.bank.getBankStatement(user.pin);
         const head = ['Date', 'Description', 'Transaction amount', 'Balance'];
         const table = new Table({ head });
         const latestTransactions = bankStatement.reverse().slice(0, 10);
@@ -63,122 +69,55 @@ class User {
           table.push([date, action, transaction_amount, balance]);
         });
         console.log(table.toString());
+        callback();
       });
   }
 
   addTransferCmd() {
+    const user = this;
     this.vorpal.command('transfer').action(async function (args, callback) {
-      this.log(this.vorpal.chalk.cyan('Remitter: '));
+      this.log(user.vorpal.chalk.cyan('Beneficiary: '));
       const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-      const { pin } = await inquirer.prompt(getPin(this.bank, accountNumber));
-      this.log(this.vorpal.chalk.cyan('Beneficiary: '));
-      let beneficiary = await inquirer.prompt(prompt.accountNumber);
-      const questions = [getIfsc(this.bank, accountNumber), prompt.amount];
+      const questions = [getIfsc(user.bank, accountNumber), prompt.amount];
       const { ifsc, amount } = await inquirer.prompt(questions);
-      beneficiary = { ifsc, accountNumber: beneficiary.accountNumber };
-      const remitter = { accountNumber, pin };
-      const status = await this.bank.transfer(remitter, beneficiary, amount);
-      const color = status.code
-        ? this.vorpal.chalk.red
-        : this.vorpal.chalk.green;
+      const beneficiary = { ifsc, accountNumber };
+      const remitter = user.accountInfo;
+      const status = await user.bank.transfer(remitter, beneficiary, amount);
+      console.log(status);
+      const color = user.getColor(status.code);
       this.log(color(status.message));
       callback();
     });
   }
 
+  addLogout() {
+    const user = this;
+    this.vorpal.command('logout').action(function () {
+      user.homeVorpal.show();
+    });
+  }
+
+  addClearCmd() {
+    this.vorpal.command('clear').action((args, callback) => {
+      console.clear();
+      callback();
+    });
+  }
+
   addDelimiter() {
-    this.vorpal.delimiter('bank->user $ ').show();
+    this.vorpal.delimiter(this.vorpal.chalk.yellow(`\nbank->user-> `)).show();
   }
 
   addCmd() {
     this.addDelimiter();
+    this.addClearCmd();
     this.addDepositCmd();
     this.addBalanceEnquiryCmd();
     this.addWithdrawalCmd();
     this.addBankStatementCmd();
     this.addTransferCmd();
+    this.addLogout();
   }
 }
 
 module.exports = { User };
-
-// const addDepositCmd = function (vorpal, bank) {
-//   vorpal.command('deposit').action(async function (args, callback) {
-//     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-//     const questions = [getIfsc(bank, accountNumber), prompt.amount];
-//     const { ifsc, amount } = await inquirer.prompt(questions);
-//     const status = await bank.deposit({ accountNumber, ifsc, amount });
-//     this.log(vorpal.chalk.green(status.message));
-//     callback();
-//   });
-// };
-
-// const addBalanceEnquiryCmd = function (vorpal, bank) {
-//   vorpal.command('balance').action(async function (args, callback) {
-//     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-//     const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
-//     const accountInfo = await bank.balanceEnquiry(pin);
-//     this.log(vorpal.chalk.green(`Available balance: ${accountInfo.balance}`));
-//     callback();
-//   });
-// };
-
-// const addWithdrawalCmd = function (vorpal, bank) {
-//   vorpal.command('withdraw').action(async function (args, callback) {
-//     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-//     const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
-//     const { amount } = await inquirer.prompt(prompt.amount);
-//     const status = await bank.withdraw({ accountNumber, pin, amount });
-//     const color = status.code ? vorpal.chalk.red : vorpal.chalk.green;
-//     this.log(color(status.message));
-//     callback();
-//   });
-// };
-
-// const addBankStatementCmd = function (vorpal, bank) {
-//   vorpal.command('bank statement').action(async function (args, callback) {
-//     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-//     const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
-//     const bankStatement = await bank.getBankStatement(pin);
-//     const head = ['Date', 'Description', 'Transaction amount', 'Balance'];
-//     const table = new Table({ head });
-//     const latestTransactions = bankStatement.reverse().slice(0, 10);
-//     latestTransactions.forEach((transaction) => {
-//       const { transaction_amount, balance, action, date } = transaction;
-//       table.push([date, action, transaction_amount, balance]);
-//     });
-//     console.log(table.toString());
-//   });
-// };
-
-// const addTransferCmd = function (vorpal, bank) {
-//   vorpal.command('transfer').action(async function (args, callback) {
-//     this.log(vorpal.chalk.cyan('Remitter: '));
-//     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
-//     const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
-//     this.log(vorpal.chalk.cyan('Beneficiary: '));
-//     let beneficiary = await inquirer.prompt(prompt.accountNumber);
-//     const questions = [getIfsc(bank, accountNumber), prompt.amount];
-//     const { ifsc, amount } = await inquirer.prompt(questions);
-//     beneficiary = { ifsc, accountNumber: beneficiary.accountNumber };
-//     const remitter = { accountNumber, pin };
-//     const status = await bank.transfer(remitter, beneficiary, amount);
-//     const color = status.code ? vorpal.chalk.red : vorpal.chalk.green;
-//     this.log(color(status.message));
-//     callback();
-//   });
-// };
-
-// const addDelimiter = (vorpal) => vorpal.delimiter('bank->user $ ').show();
-
-// const addCmd = function (bank) {
-//   const vorpal = new Vorpal();
-//   addDelimiter(vorpal);
-//   addDepositCmd(vorpal, bank);
-//   addBalanceEnquiryCmd(vorpal, bank);
-//   addWithdrawalCmd(vorpal, bank);
-//   addBankStatementCmd(vorpal, bank);
-//   addTransferCmd(vorpal, bank);
-// };
-
-// module.exports = { addCmd };
