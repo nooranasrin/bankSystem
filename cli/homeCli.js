@@ -1,6 +1,6 @@
 const inquirer = require('inquirer');
 const Vorpal = require('vorpal');
-const { User } = require('./bankCli');
+const { addCmd } = require('./bankCli');
 const { prompt, getBranches, getPin } = require('./prompt');
 
 const addCreateCmd = function (vorpal, bank) {
@@ -24,9 +24,10 @@ const addLoginCmd = function (vorpal, bank) {
   vorpal.command('login').action(async function (args, callback) {
     const { accountNumber } = await inquirer.prompt(prompt.accountNumber);
     const { pin } = await inquirer.prompt(getPin(bank, accountNumber));
-    const user = new User(accountNumber, pin, bank, vorpal);
-    user.addCmd();
-    this.log(vorpal.chalk.green('Successfully logged in'));
+    bank.updateUser(accountNumber, pin);
+    addCmd(bank, vorpal);
+    console.clear();
+    this.log(vorpal.chalk.green('\nSuccessfully logged in'));
     callback();
   });
 };
